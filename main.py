@@ -17,14 +17,12 @@ w3 = Web3(Web3.HTTPProvider(INFURA_HTTP))
 logging.basicConfig(level=logging.INFO)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Бот запущен через Webhook.
-Команда /balance покажет текущий баланс ETH.")
+    await update.message.reply_text("👋 Бот запущен через Webhook.\nКоманда /balance покажет текущий баланс ETH.")
 
 async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     balance_wei = w3.eth.get_balance(ETH_ADDRESS)
     balance_eth = w3.fromWei(balance_wei, 'ether')
-    await update.message.reply_text(f"💰 Баланс Ethereum-кошелька:
-{balance_eth:.4f} ETH")
+    await update.message.reply_text(f"💰 Баланс Ethereum-кошелька:\n{balance_eth:.4f} ETH")
 
 app = Flask(__name__)
 

@@ -1,36 +1,48 @@
-import asyncio
-import requests
+import logging
+from telegram import Bot, Update
+from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import AIORateLimiter
+from telegram.ext.webhookhandler import WebhookServer
+
 from web3 import Web3
-from telegram import Bot
-from telegram.ext import Updater, CommandHandler
+from flask import Flask, request
 
 TELEGRAM_TOKEN = "7872098214:AAEcVXZJIh6fHhIFCfaO5Gku6gvbwxRHzCA"
 ETH_ADDRESS = "0xb1b51b15125e688aea7b919eca7a4eb94aab8f17"
+WEBHOOK_URL = "https://tg-wallet-tracker.onrender.com/webhook"
 
 INFURA_HTTP = "https://mainnet.infura.io/v3/84842078b09946638c03157f83405213"
 w3 = Web3(Web3.HTTPProvider(INFURA_HTTP))
 
-bot = Bot(token=TELEGRAM_TOKEN)
+logging.basicConfig(level=logging.INFO)
 
-def start(update, context):
-    update.message.reply_text("👋 Привет! Я отслеживаю адреса и сообщаю о транзакциях.\n\nДоступные команды:\n/balance — баланс кошелька\n/start — перезапуск\n/help — помощь")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("👋 Бот запущен через Webhook.
+Команда /balance покажет текущий баланс ETH.")
 
-def help_command(update, context):
-    update.message.reply_text("💡 Я отслеживаю транзакции на адресах.\n\n/balance — баланс ETH\n/start — запуск\n/help — помощь")
-
-def balance(update, context):
+async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     balance_wei = w3.eth.get_balance(ETH_ADDRESS)
     balance_eth = w3.fromWei(balance_wei, 'ether')
-    update.message.reply_text(f"💰 Баланс Ethereum-кошелька:\n{balance_eth:.4f} ETH")
+    await update.message.reply_text(f"💰 Баланс Ethereum-кошелька:
+{balance_eth:.4f} ETH")
 
-def main():
-    updater = Updater(TELEGRAM_TOKEN, use_context=True)
-    dp = updater.dispatcher
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help_command))
-    dp.add_handler(CommandHandler("balance", balance))
-    updater.start_polling()
-    updater.idle()
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "✅ Бот работает"
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    request_data = request.get_json(force=True)
+    application.update_queue.put_nowait(Update.de_json(data=request_data, bot=application.bot))
+    return "ok"
 
 if __name__ == '__main__':
-    main()
+    application = Application.builder().token(TELEGRAM_TOKEN).rate_limiter(AIORateLimiter()).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("balance", balance))
+    bot = Bot(token=TELEGRAM_TOKEN)
+    bot.delete_webhook()
+    bot.set_webhook(WEBHOOK_URL)
+    app.run(host="0.0.0.0", port=10000)
